@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Tab</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%238ab4f8'/%3E%3Ccircle cx='50' cy='50' r='22' fill='%23202124'/%3E%3Ccircle cx='50' cy='50' r='13' fill='%238ab4f8'/%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:13px;color:#e8eaed;background:#202124;overflow:hidden;
+  -webkit-font-smoothing:antialiased;user-select:none;
+  color-scheme:dark;
+}
+button{font:inherit;color:inherit;background:none;border:none;padding:0}
+svg{display:block}
+#app{display:flex;flex-direction:column;height:100vh}
+
+#tabstrip{
+  flex:0 0 auto;height:40px;display:flex;align-items:flex-end;
+  background:#202124;padding:0 6px 0 8px;gap:2px;
+}
+#tabs{display:flex;align-items:flex-end;flex:0 1 auto;min-width:0;height:100%;overflow:hidden}
+.tab{
+  position:relative;display:flex;align-items:center;gap:8px;
+  height:34px;min-width:44px;max-width:240px;flex:1 1 180px;
+  padding:0 6px 0 10px;border-radius:8px 8px 0 0;
+  color:#9aa0a6;font-size:12px;cursor:default;overflow:hidden;
+}
+.tab + .tab{box-shadow:-1px 0 0 0 #3c4043}
+.tab:hover{background:#3c4043;box-shadow:none}
+.tab:hover + .tab{box-shadow:none}
+.tab.active{background:#35363a;color:#e8eaed;box-shadow:none}
+.tab.active + .tab{box-shadow:none}
+
+.tab-favicon{
+  position:relative;flex:0 0 16px;width:16px;height:16px;border-radius:50%;
+  background:var(--fav,#9aa0a6);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;
+}
+.tab.loading .tab-favicon{background:transparent}
+.tab.loading .tab-favicon-letter{visibility:hidden}
+.tab-spinner{
+  position:absolute;inset:1px;border-radius:50%;display:none;
+  border:2px solid #5f6368;border-top-color:#9aa0a6;
+  animation:spin .8s linear infinite;
+}
+.tab.loading .tab-spinner{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.tab-title{flex:1 1 auto;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1}
+.tab-close{
+  flex:0 0 16px;width:16px;height:16px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;
+  color:#9aa0a6;cursor:pointer;
+}
+.tab:hover .tab-close,.tab.active .tab-close{display:flex}
+.tab-close:hover{background:#5f6368;color:#e8eaed}
+.tab-close svg{width:10px;height:10px}
+
+#pz-new-tab{
+  flex:0 0 auto;width:28px;height:28px;margin:0 0 3px 4px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:#9aa0a6;cursor:pointer;
+}
+#pz-new-tab:hover{background:#3c4043;color:#e8eaed}
+#pz-new-tab svg{width:16px;height:16px}
+
+#toolbar{
+  flex:0 0 auto;height:48px;display:flex;align-items:center;gap:2px;
+  padding:0 6px;background:#35363a;position:relative;z-index:4;
+}
+.icon-btn{
+  width:32px;height:32px;border-radius:50%;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;
+  color:#9aa0a6;cursor:pointer;
+}
+.icon-btn:hover{background:#3c4043;color:#e8eaed}
+.icon-btn:active{background:#5f6368}
+.icon-btn[disabled]{opacity:.4;pointer-events:none}
+.icon-btn svg{width:20px;height:20px}
+
+#omnibox-wrap{
+  flex:1 1 auto;min-width:120px;height:34px;margin:0 6px;
+  display:flex;align-items:center;
+  background:#202124;border-radius:17px;padding:0 4px 0 12px;
+  transition:box-shadow .15s;
+  border:1px solid transparent;
+}
+#omnibox-wrap:hover{background:#292a2d}
+#omnibox-wrap:focus-within{background:#202124;border-color:#5f6368;box-shadow:0 0 0 1px #8ab4f8}
+#omnibox-icon{flex:0 0 auto;color:#9aa0a6;display:flex;margin-right:8px}
+#omnibox-icon svg{width:16px;height:16px}
+#pz-url{
+  flex:1 1 auto;min-width:0;height:100%;border:none;outline:none;
+  background:transparent;font:inherit;font-size:14px;color:#e8eaed;
+  user-select:text;padding:0;
+}
+#pz-url::placeholder{color:#9aa0a6}
+#star-btn{width:28px;height:28px}
+#star-btn svg{width:18px;height:18px}
+#star-btn.on{color:#fdd663}
+#star-btn.on svg{fill:#fdd663;stroke:#fdd663}
+
+#bookmarks-bar{
+  flex:0 0 auto;height:34px;display:flex;align-items:center;
+  padding:0 8px;gap:2px;background:#35363a;
+  border-bottom:1px solid #202124;
+  overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+}
+#bookmarks-bar::-webkit-scrollbar{display:none}
+#bookmarks-bar[hidden]{display:none}
+.bookmark-item{
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  height:26px;padding:0 4px 0 6px;border-radius:4px;
+  color:#e8eaed;font-size:12px;cursor:pointer;max-width:180px;
+}
+.bookmark-item:hover{background:#3c4043}
+.bookmark-favicon{
+  flex:0 0 16px;width:16px;height:16px;border-radius:50%;
+  background:var(--fav,#9aa0a6);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;
+}
+.bookmark-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}
+.bookmark-remove{
+  display:none;flex:0 0 16px;width:16px;height:16px;
+  align-items:center;justify-content:center;
+  border-radius:50%;color:#9aa0a6;cursor:pointer;
+}
+.bookmark-remove svg{width:10px;height:10px}
+.bookmark-item:hover .bookmark-remove{display:flex}
+.bookmark-remove:hover{background:#5f6368;color:#e8eaed}
+
+#pz-main{position:relative;flex:1 1 auto;min-height:0;background:#202124;overflow:hidden}
+#pz-frame-wrap{position:absolute;inset:0}
+.page-frame{
+  position:absolute;inset:0;width:100%;height:100%;border:0;
+  background:#202124;display:none;
+}
+.page-frame.active{display:block}
+
+#pz-home{
+  position:absolute;inset:0;background:#202124;z-index:2;
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:30px;padding:24px;
+}
+#pz-home.active{display:flex}
+.chrome-logo{
+  width:72px;height:72px;border-radius:50%;position:relative;
+  background:conic-gradient(from -60deg,#ea4335 0 120deg,#34a853 120deg 240deg,#fbbc05 240deg 360deg);
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+}
+.chrome-logo::before{content:"";position:absolute;inset:26%;border-radius:50%;background:#202124}
+.chrome-logo::after{content:"";position:absolute;inset:37%;border-radius:50%;background:#8ab4f8}
+.ntp-search{
+  display:flex;align-items:center;gap:10px;
+  width:min(584px,100%);height:46px;
+  background:#292a2d;border:1px solid #5f6368;border-radius:23px;
+  padding:0 18px;box-shadow:0 1px 6px rgba(0,0,0,.4);
+  transition:box-shadow .15s,border-color .15s,background .15s;
+}
+.ntp-search:focus-within{box-shadow:0 1px 6px rgba(0,0,0,.5);border-color:transparent;outline:1px solid #8ab4f8}
+.ntp-search .ntp-ico{flex:0 0 auto;color:#9aa0a6}
+.ntp-search .ntp-ico svg{width:20px;height:20px}
+.ntp-search input{
+  flex:1 1 auto;min-width:0;height:100%;border:none;outline:none;
+  background:transparent;font-size:16px;color:#e8eaed;user-select:text;
+}
+#pz-home.has-bg .ntp-search{
+  background:rgba(32,33,36,.68);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+
+#boot-status{
+  position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;background:#202124;
+  color:#9aa0a6;font-size:13px;
+}
+#boot-status.hidden{display:none}
+.boot-spinner{
+  width:32px;height:32px;border-radius:50%;
+  border:3px solid #3c4043;border-top-color:#8ab4f8;
+  animation:spin .9s linear infinite;
+}
+
+.error-page{
+  position:absolute;inset:0;background:#202124;z-index:20;
+  display:flex;align-items:center;justify-content:center;padding:32px;
+}
+.error-page[hidden]{display:none}
+.error-inner{max-width:520px;text-align:center}
+.error-icon{width:72px;height:72px;margin:0 auto 24px;color:#5f6368}
+.error-inner h1{font-size:22px;font-weight:400;margin:0 0 12px;color:#e8eaed}
+.error-inner p{margin:0 0 24px;color:#9aa0a6;font-size:13px;line-height:1.6;word-break:break-word;user-select:text}
+.error-actions{display:flex;gap:8px;justify-content:center}
+
+.btn{
+  height:32px;padding:0 16px;border-radius:16px;border:1px solid #5f6368;
+  background:transparent;color:#8ab4f8;font-size:13px;font-weight:500;cursor:pointer;
+  display:inline-flex;align-items:center;
+}
+.btn:hover{background:#3c4043}
+.btn.primary{background:#8ab4f8;border-color:#8ab4f8;color:#202124}
+.btn.primary:hover{background:#aecbfa}
+
+#menu-popup{
+  position:fixed;width:300px;max-height:80vh;overflow-y:auto;
+  background:#292a2d;border-radius:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.6);
+  padding:6px 0;z-index:200;border:1px solid #3c4043;
+}
+#menu-popup[hidden]{display:none}
+.menu-item{
+  display:flex;align-items:center;gap:14px;height:34px;padding:0 16px;
+  font-size:13px;color:#e8eaed;cursor:pointer;
+}
+.menu-item:hover{background:#3c4043}
+.menu-item .shortcut{margin-left:auto;color:#9aa0a6;font-size:11px}
+.menu-sep{height:1px;background:#3c4043;margin:6px 0}
+
+#bg-overlay{
+  position:fixed;inset:0;z-index:400;padding:20px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.55);
+}
+#bg-overlay[hidden]{display:none}
+#bg-panel{
+  width:min(440px,100%);padding:20px;border-radius:12px;
+  background:#292a2d;border:1px solid #3c4043;
+  box-shadow:0 12px 40px rgba(0,0,0,.65);
+  color:#e8eaed;font-size:13px;
+}
+#bg-panel h2{margin:0 0 4px;font-size:15px;font-weight:500}
+#bg-panel .bg-sub{margin:0 0 16px;color:#9aa0a6;font-size:12px}
+.bg-row{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+.bg-row input[type=text]{
+  flex:1 1 auto;min-width:0;height:34px;border-radius:8px;
+  border:1px solid #5f6368;background:#202124;color:#e8eaed;
+  padding:0 12px;font:inherit;font-size:13px;outline:none;user-select:text;
+}
+.bg-row input[type=text]:focus{border-color:#8ab4f8}
+.bg-btn{
+  height:34px;padding:0 14px;border-radius:8px;border:1px solid #5f6368;
+  background:transparent;color:#8ab4f8;font-size:13px;font-weight:500;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+}
+.bg-btn:hover{background:#3c4043}
+.bg-btn.solid{background:#8ab4f8;border-color:#8ab4f8;color:#202124}
+.bg-btn.solid:hover{background:#aecbfa}
+.bg-btn.danger{color:#f28b82;width:100%}
+.bg-presets{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+.bg-swatch{
+  width:56px;height:36px;border-radius:8px;border:1px solid #5f6368;
+  cursor:pointer;background-size:cover;padding:0;
+}
+.bg-swatch:hover{border-color:#8ab4f8}
+
+#toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);
+  background:#e8eaed;color:#202124;font-size:13px;padding:10px 18px;border-radius:6px;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:500;
+  max-width:80vw;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* bare mode: launched via #url:… — show only the proxied page */
+body.bare #tabstrip,
+body.bare #toolbar,
+body.bare #bookmarks-bar{display:none!important}
+body.bare #pz-home{display:none!important}
+body.bare #pz-main{background:#202124}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="tabstrip">
+    <div id="tabs"></div>
+    <button id="pz-new-tab" title="New tab (Ctrl+T)" aria-label="New tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </div>
+
+  <div id="toolbar">
+    <button id="pz-back" class="icon-btn" title="Back (Alt+Left)" aria-label="Back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <button id="pz-forward" class="icon-btn" title="Forward (Alt+Right)" aria-label="Forward">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <button id="pz-reload" class="icon-btn" title="Reload (Ctrl+R)" aria-label="Reload">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+    </button>
+
+    <div id="omnibox-wrap">
+      <span id="omnibox-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      </span>
+      <input id="pz-url" type="text" spellcheck="false" autocomplete="off"
+             placeholder="Search Google or type a URL" aria-label="Address and search bar">
+      <button id="star-btn" class="icon-btn" title="Bookmark this page (Ctrl+D)" aria-label="Bookmark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>
+      </button>
+    </div>
+
+    <button id="menu-btn" class="icon-btn" title="Customize and control" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>
+    </button>
+  </div>
+
+  <div id="bookmarks-bar" hidden></div>
+
+  <main id="pz-main">
+    <div id="pz-frame-wrap"></div>
+
+    <div id="pz-home">
+      <div class="chrome-logo" aria-hidden="true"></div>
+      <form id="pz-home-search" class="ntp-search" autocomplete="off">
+        <span class="ntp-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        </span>
+        <input id="pz-home-search-input" type="search" spellcheck="false" autocomplete="off"
+               aria-label="Search">
+      </form>
+    </div>
+
+    <div id="boot-status">
+      <div class="boot-spinner"></div>
+      <div id="boot-status-text">Starting…</div>
+    </div>
+
+    <div id="error-page" class="error-page" hidden>
+      <div class="error-inner">
+        <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/>
+          <path d="M9.5 13.5l5 5M14.5 13.5l-5 5"/>
+        </svg>
+        <h1 id="error-title">This site can’t be reached</h1>
+        <p id="error-message"></p>
+        <div class="error-actions">
+          <button id="error-retry" class="btn primary">Reload</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="menu-popup" hidden>
+  <div class="menu-item" data-action="newtab">New tab<span class="shortcut">Ctrl+T</span></div>
+  <div class="menu-item" data-action="bookmark">Bookmark this page<span class="shortcut">Ctrl+D</span></div>
+  <div class="menu-sep"></div>
+  <div class="menu-item" data-action="background">Custom background</div>
+  <div class="menu-item" data-action="fullscreen">Full screen<span class="shortcut">F11</span></div>
+  <div class="menu-item" data-action="clear">Clear browsing data</div>
+</div>
+
+<div id="bg-overlay" hidden>
+  <div id="bg-panel" role="dialog" aria-modal="true" aria-label="Custom background">
+    <h2>Custom background</h2>
+    <p class="bg-sub">Shown on the new tab page.</p>
+    <div class="bg-presets">
+      <button class="bg-swatch" data-bg="linear-gradient(135deg,#0f2027,#203a43,#2c5364)" title="Deep sea"></button>
+      <button class="bg-swatch" data-bg="linear-gradient(135deg,#42275a,#734b6d)" title="Plum"></button>
+      <button class="bg-swatch" data-bg="linear-gradient(135deg,#232526,#414345)" title="Graphite"></button>
+      <button class="bg-swatch" data-bg="linear-gradient(135deg,#1f4037,#99f2c8)" title="Mint"></button>
+      <button class="bg-swatch" data-bg="linear-gradient(135deg,#200122,#6f0000)" title="Ember"></button>
+    </div>
+    <div class="bg-row">
+      <label class="bg-btn" for="bg-file">Upload image</label>
+      <input id="bg-file" type="file" accept="image/*" hidden>
+      <input id="bg-url" type="text" placeholder="…or paste an image URL" spellcheck="false" autocomplete="off">
+      <button id="bg-apply" class="bg-btn solid">Set</button>
+    </div>
+    <div class="bg-row" style="margin-bottom:0">
+      <button id="bg-remove" class="bg-btn danger">Remove background</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+'use strict';
+
+var $ = function (id) { return document.getElementById(id); };
+
+var BASE_PATH = location.pathname.replace(/[^/]*$/, '');
+var PROXY_REPO = '/gh/s0n-1m-cr1n3/sc13nc3@main/assets/prox';
+var PROXY_HOSTS = ['https://cdn.jsdelivr.net', 'https://fastly.jsdelivr.net', 'https://gcore.jsdelivr.net'];
+var PROXY_HOME = 'unblockedzone://home';
+
+var SEARCH = {
+  home: 'https://www.google.com/',
+  search: 'https://www.google.com/search?q='
+};
+
+var W1SP_ENDPOINTS = [
+  'wss://wisp.5-5d0.workers.dev/',
+];
+
+var tabs = [];
+var activeTab = null;
+var controller = null;
+var proxyTransport = null;
+var proxyBase = null;
+var starting = null;
+var pendingUrl = null;
+var currentW1sp = '';
+var w1spAttempts = [];
+
+var bareMode = false;
+
+function enterBareMode() {
+  if (bareMode) return;
+  bareMode = true;
+  document.body.classList.add('bare');
+  var home = $('pz-home');
+  if (home) home.classList.remove('active');
+}
+
+function toast(msg) {
+  var t = $('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t.__timer);
+  t.__timer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+}
+
+function hideRelayUrls(text) {
+  return String(text || '').replace(/wss?:\/\/[^\s'"<>),]+/gi, 'wss://••••••••');
+}
+
+function loadScript(src) {
+  return new Promise(function (resolve, reject) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = function () { resolve(); };
+    s.onerror = function () { reject(new Error('Failed to load ' + src)); };
+    document.head.appendChild(s);
+  });
+}
+
+async function workerFileExists(url) {
+  try {
+    var head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    if (head.ok) return true;
+  } catch (e) {}
+  try {
+    var res = await fetch(url, { cache: 'no-store', headers: { Range: 'bytes=0-0' } });
+    return !!res && (res.ok || res.status === 206);
+  } catch (e) {
+    return false;
+  }
+}
+
+function waitForController(reg) {
+  if (navigator.serviceWorker.controller) return Promise.resolve(navigator.serviceWorker.controller);
+  return new Promise(function (resolve) {
+    var done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      resolve(navigator.serviceWorker.controller || (reg && reg.active) || null);
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', finish, { once: true });
+    setTimeout(finish, 6000);
+  });
+}
+
+async function pickProxyBase() {
+  if (proxyBase) return proxyBase;
+  for (var i = 0; i < PROXY_HOSTS.length; i++) {
+    var base = PROXY_HOSTS[i] + PROXY_REPO;
+    if (await workerFileExists(base + '/ik0qm3.js')) {
+      proxyBase = base;
+      return proxyBase;
+    }
+  }
+  proxyBase = PROXY_HOSTS[0] + PROXY_REPO;
+  return proxyBase;
+}
+
+function importProxyModule(path) {
+  return pickProxyBase().then(function (base) {
+    return import(base + path);
+  });
+}
+
+function hostOf(url) {
+  try { return new URL(url).hostname; } catch (e) { return ''; }
+}
+
+function colorFor(host) {
+  var h = 0;
+  for (var i = 0; i < host.length; i++) h = (h * 31 + host.charCodeAt(i)) % 360;
+  return 'hsl(' + h + ',42%,55%)';
+}
+
+function searchUrl(query) {
+  return SEARCH.search + encodeURIComponent(query);
+}
+
+function normalizeUrl(value) {
+  var v = String(value == null ? '' : value).trim();
+  if (!v) return PROXY_HOME;
+  if (/^(unblockedzone|chrome|about|newtab):/i.test(v)) return PROXY_HOME;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(v)) return v;
+  if (/^(localhost|\[[0-9a-f:]+\]|[0-9.]+)(:[0-9]+)?([\/?#]|$)/i.test(v)) return 'http://' + v;
+  if (/^[^\s\/]+\.[^\s\/:]{2,}(:[0-9]+)?([\/?#]|$)/.test(v)) return 'https://' + v;
+  return searchUrl(v);
+}
+
+function normalizeW1spUrl(value) {
+  var v = (value || '').trim();
+  if (!v) return '';
+  v = v.replace(/^https:\/\//i, 'wss://').replace(/^http:\/\//i, 'ws://');
+  if (location.protocol === 'https:' && /^ws:\/\//i.test(v)) v = v.replace(/^ws:/i, 'wss:');
+  if (!/^wss?:\/\//i.test(v)) v = 'wss://' + v;
+  try {
+    var u = new URL(v);
+    if (u.protocol !== 'ws:' && u.protocol !== 'wss:') return '';
+    if (!u.hostname) return '';
+    if (!/\/$/.test(u.pathname)) u.pathname += '/';
+    return u.href;
+  } catch (e) {
+    return '';
+  }
+}
+
+function probeW1sp(url, timeoutMs) {
+  return new Promise(function (resolve) {
+    var socket = null, done = false;
+    function finish(ok) {
+      if (done) return;
+      done = true;
+      try { if (socket) socket.close(); } catch (e) {}
+      resolve(ok);
+    }
+    try {
+      socket = new WebSocket(url);
+      socket.onopen = function () { finish(true); };
+      socket.onerror = function () { finish(false); };
+      socket.onclose = function () { finish(false); };
+    } catch (e) {
+      finish(false);
+      return;
+    }
+    setTimeout(function () { finish(false); }, timeoutMs || 2500);
+  });
+}
+
+async function findWorkingW1sp() {
+  var order = [];
+  W1SP_ENDPOINTS.forEach(function (u) {
+    var n = normalizeW1spUrl(u);
+    if (n && order.indexOf(n) === -1) order.push(n);
+  });
+  w1spAttempts = order.slice();
+
+  function remember(url) {
+    try { localStorage.setItem('pzW1sp', url); } catch (e) {}
+    return url;
+  }
+
+  var saved = '';
+  try { saved = normalizeW1spUrl(localStorage.getItem('pzW1sp') || ''); } catch (e) {}
+  if (saved) {
+    if (await probeW1sp(saved)) return saved;
+  }
+
+  if (!order.length) return null;
+
+  setBootStatus('Contacting relays…');
+  var winner = await new Promise(function (resolve) {
+    var left = order.length, settled = false;
+    order.forEach(function (url) {
+      probeW1sp(url).then(function (ok) {
+        left--;
+        if (ok && !settled) { settled = true; resolve(url); }
+        else if (left === 0 && !settled) { settled = true; resolve(null); }
+      });
+    });
+  });
+  if (winner) return remember(winner);
+  return null;
+}
+
+function setBootStatus(text) {
+  var el = $('boot-status-text');
+  if (el) el.textContent = text;
+}
+
+function showBootStatus(text) {
+  setBootStatus(text);
+  var b = $('boot-status');
+  if (b) b.classList.remove('hidden');
+}
+
+function hideBootStatus() {
+  var b = $('boot-status');
+  if (b) b.classList.add('hidden');
+}
+
+function showError(title, message) {
+  $('error-title').textContent = title || 'This page isn’t working';
+  $('error-message').textContent = message || '';
+  $('error-page').hidden = false;
+}
+
+function hideError() {
+  var el = $('error-page');
+  if (el) el.hidden = true;
+}
+
+/* ---------------- bookmarks ---------------- */
+
+function getBookmarks() {
+  try {
+    var raw = JSON.parse(localStorage.getItem('pzBookmarks') || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveBookmarks(list) {
+  try { localStorage.setItem('pzBookmarks', JSON.stringify(list)); } catch (e) {}
+  renderBookmarks();
+}
+
+function isBookmarked(url) {
+  if (!url) return false;
+  return getBookmarks().some(function (b) { return b.url === url; });
+}
+
+function updateStar() {
+  var star = $('star-btn');
+  if (!star) return;
+  var url = activeTab && !activeTab.isHome ? activeTab.url : '';
+  star.classList.toggle('on', isBookmarked(url));
+}
+
+function toggleBookmark(url, title) {
+  if (!url) return false;
+  var list = getBookmarks();
+  var idx = -1;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].url === url) { idx = i; break; }
+  }
+  if (idx === -1) {
+    list.push({ url: url, title: title || url });
+    saveBookmarks(list);
+    updateStar();
+    toast('Bookmark added');
+    return true;
+  }
+  list.splice(idx, 1);
+  saveBookmarks(list);
+  updateStar();
+  toast('Bookmark removed');
+  return false;
+}
+
+function renderBookmarks() {
+  var bar = $('bookmarks-bar');
+  if (!bar) return;
+  var list = getBookmarks();
+  bar.innerHTML = '';
+  if (!list.length) {
+    bar.hidden = true;
+    return;
+  }
+  bar.hidden = false;
+  list.forEach(function (b) {
+    var el = document.createElement('div');
+    el.className = 'bookmark-item';
+    el.title = (b.title || b.url) + '\n' + b.url;
+
+    var host = hostOf(b.url);
+    var fav = document.createElement('span');
+    fav.className = 'bookmark-favicon';
+    fav.style.setProperty('--fav', colorFor(host));
+    fav.textContent = (host.replace(/^www\./, '') || '?').charAt(0);
+
+    var title = document.createElement('span');
+    title.className = 'bookmark-title';
+    title.textContent = b.title || b.url;
+
+    var remove = document.createElement('button');
+    remove.className = 'bookmark-remove';
+    remove.title = 'Remove bookmark';
+    remove.setAttribute('aria-label', 'Remove bookmark');
+    remove.innerHTML = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg>';
+    remove.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleBookmark(b.url, b.title);
+    });
+
+    el.appendChild(fav);
+    el.appendChild(title);
+    el.appendChild(remove);
+    el.addEventListener('click', function () { navigate(b.url); });
+    bar.appendChild(el);
+  });
+}
+
+/* ---------------- custom background ---------------- */
+
+function getBg() {
+  try { return localStorage.getItem('pzBg') || ''; } catch (e) { return ''; }
+}
+
+function saveBg(css) {
+  try {
+    localStorage.setItem('pzBg', css);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function applyBackground() {
+  var home = $('pz-home');
+  if (!home) return;
+  var bg = getBg();
+  home.style.backgroundImage = bg || '';
+  home.classList.toggle('has-bg', !!bg);
+}
+
+function openBgPanel(show) {
+  var ov = $('bg-overlay');
+  if (!ov) return;
+  ov.hidden = !show;
+  if (show) {
+    var urlInput = $('bg-url');
+    if (urlInput) urlInput.value = '';
+  }
+}
+
+function fileToDataUrl(file) {
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () { resolve(String(r.result || '')); };
+    r.onerror = function () { reject(new Error('Could not read the file')); };
+    r.readAsDataURL(file);
+  });
+}
+
+function shrinkImage(dataUrl, maxWidth, quality) {
+  return new Promise(function (resolve) {
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var w = img.naturalWidth || img.width;
+        var h = img.naturalHeight || img.height;
+        if (!w || !h) return resolve(dataUrl);
+        var scale = Math.min(1, maxWidth / w);
+        var cw = Math.max(1, Math.round(w * scale));
+        var ch = Math.max(1, Math.round(h * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(dataUrl);
+        ctx.drawImage(img, 0, 0, cw, ch);
+        resolve(canvas.toDataURL('image/jpeg', quality || 0.85));
+      } catch (e) {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = function () { resolve(dataUrl); };
+    img.src = dataUrl;
+  });
+}
+
+/* ---------------- hash routing (through the proxy) ---------------- */
+
+function hashTarget(hash) {
+  var raw = String(hash || '').replace(/^#/, '').trim();
+  var m = /^url:(.+)$/i.exec(raw);
+  if (!m) return '';
+  var candidate = m[1].trim();
+  try { candidate = decodeURIComponent(candidate); } catch (e) {}
+  candidate = candidate.trim();
+  if (!candidate) return '';
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(candidate)) {
+    return /^https?:\/\//i.test(candidate) ? candidate : '';
+  }
+  if (/^(localhost|\[[0-9a-f:]+\]|[0-9.]+)(:[0-9]+)?([\/?#]|$)/i.test(candidate)) {
+    return 'http://' + candidate;
+  }
+  if (/^[^\s\/]+\.[^\s\/:]{2,}(:[0-9]+)?([\/?#]|$)/.test(candidate)) {
+    return 'https://' + candidate;
+  }
+  return '';
+}
+
+function handleHashTarget() {
+  var target = hashTarget(location.hash);
+  if (!target) return false;
+
+  enterBareMode();
+
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+
+  if (controller) {
+    if (activeTab) navigateTo(activeTab, target);
+    else createTab(target);
+  } else {
+    pendingUrl = target;
+    initProxy();
+  }
+  return true;
+}
+
+window.addEventListener('hashchange', function () { handleHashTarget(); });
+
+/* ---------------- proxy boot ---------------- */
+
+async function initProxy() {
+  if (starting) return starting;
+
+  starting = (async function () {
+    if (location.protocol === 'file:') {
+      throw new Error('The proxy needs a service worker, which browsers refuse to register on file:// pages. Serve this folder over http and open it from there.');
+    }
+
+    var reg = null, sw = null;
+    try { sw = navigator.serviceWorker.controller || null; } catch (e) {}
+    if (!sw) {
+      try { reg = await navigator.serviceWorker.getRegistration(BASE_PATH); } catch (e) {}
+      if (!reg) { try { reg = await navigator.serviceWorker.getRegistration(); } catch (e) {} }
+      if (reg && reg.active) sw = reg.active;
+    }
+    if (!sw) {
+      showBootStatus('Registering service worker…');
+      var stubs = [BASE_PATH + 'x7q2.js', BASE_PATH + '../x7q2.js', BASE_PATH + 'sw.js', BASE_PATH + '../sw.js'];
+      var swUrl = '';
+      for (var i = 0; i < stubs.length && !swUrl; i++) {
+        if (await workerFileExists(stubs[i])) swUrl = stubs[i];
+      }
+      if (!swUrl) {
+        throw new Error('Could not find the proxy service worker (x7q2.js or sw.js). Serve this page from the folder that contains it.');
+      }
+      try {
+        reg = await navigator.serviceWorker.register(swUrl, { scope: BASE_PATH, updateViaCache: 'none' });
+      } catch (e) {
+        throw new Error('The service worker was refused: ' + (e && e.message ? e.message : e));
+      }
+      await navigator.serviceWorker.ready;
+      sw = await waitForController(reg);
+      if (!sw) throw new Error('The service worker never activated.');
+    }
+
+    showBootStatus('Loading the proxy engine…');
+    var base = await pickProxyBase();
+    await loadScript(base + '/ik0qm3.js');
+    await loadScript(base + '/myy6pq.js');
+    if (!window._pnclg8f || !window._pnclg8f.Controller) {
+      throw new Error('The proxy engine failed to load from the CDN.');
+    }
+
+    var transport = proxyTransport;
+    if (!transport) {
+      showBootStatus('Finding a working relay…');
+      var w1sp = await findWorkingW1sp();
+      if (!w1sp) {
+        throw new Error('No relay accepted a connection. Reload the page to retry.');
+      }
+      currentW1sp = w1sp;
+      showBootStatus('Starting transport…');
+      var mod = await importProxyModule('/index.mjs');
+      var Libcurl = mod.default || mod.LibcurlClient;
+      transport = new Libcurl({ wisp: w1sp, websocket: w1sp });
+      await transport.init();
+      proxyTransport = transport;
+    }
+
+    showBootStatus('Starting…');
+    controller = new window._pnclg8f.Controller({
+      serviceworker: sw,
+      transport: transport,
+      config: {
+        prefix: BASE_PATH + '~/sj/',
+        wasmPath: base + '/wilqi3.wasm',
+        injectPath: base + '/7yjvt7.js',
+        _uqtii5vPath: base + '/ik0qm3.js'
+      },
+      _uqtii5vConfig: {
+        _uqtii5vPath: base + '/ik0qm3.js',
+        injectPath: base + '/7yjvt7.js',
+        virtualWasmPath: '_uqtii5v.wasm.js'
+      }
+    });
+    await controller.wait();
+
+    hideBootStatus();
+    hideError();
+
+    var first = pendingUrl || PROXY_HOME;
+    pendingUrl = null;
+    createTab(first);
+  })();
+
+  starting.catch(function (err) {
+    starting = null;
+    proxyTransport = null;
+    hideBootStatus();
+    showError('This page isn’t working', hideRelayUrls(err && err.message ? err.message : String(err)));
+  });
+
+  return starting;
+}
+
+/* ---------------- tabs / navigation ---------------- */
+
+function renderTab(tab) {
+  tab.titleEl.textContent = tab.title || 'New Tab';
+  tab.dom.title = (tab.title || 'New Tab') + (tab.url ? '\n' + tab.url : '');
+  tab.dom.classList.toggle('active', tab === activeTab);
+  tab.dom.classList.toggle('loading', !!tab.loading);
+  var host = hostOf(tab.url);
+  var clean = host.replace(/^www\./, '');
+  tab.letterEl.textContent = clean ? clean.charAt(0) : '';
+  tab.faviconEl.style.setProperty('--fav', host ? colorFor(host) : '#9aa0a6');
+}
+
+function updateOmniboxIcon(url) {
+  var icon = $('omnibox-icon');
+  if (!icon) return;
+  if (/^https:\/\//i.test(url || '')) {
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  } else {
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
+  }
+}
+
+function setOmnibox(value) {
+  var el = $('pz-url');
+  if (!el) return;
+  if (document.activeElement === el) return;
+  el.value = value || '';
+}
+
+function renderView() {
+  var t = activeTab;
+  var home = !!(t && t.isHome);
+
+  var homeEl = $('pz-home');
+  if (homeEl) homeEl.classList.toggle('active', home && !bareMode);
+
+  tabs.forEach(function (x) {
+    x.el.classList.toggle('active', x === t && !x.isHome);
+  });
+
+  if (t) {
+    setOmnibox(t.isHome ? '' : t.url);
+    updateOmniboxIcon(t.isHome ? '' : t.url);
+    document.title = t.title || 'New Tab';
+  }
+  updateStar();
+}
+
+function activateTab(tab) {
+  if (!tab) return;
+  activeTab = tab;
+  hideError();
+  tabs.forEach(function (t) { t.dom.classList.toggle('active', t === tab); });
+  renderView();
+}
+
+function createTab(url) {
+  if (!controller) {
+    pendingUrl = url || PROXY_HOME;
+    initProxy();
+    return null;
+  }
+
+  var wrap = $('pz-frame-wrap');
+  var iframe = document.createElement('iframe');
+  iframe.className = 'page-frame';
+  iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen; autoplay');
+  wrap.appendChild(iframe);
+
+  var dom = document.createElement('div');
+  dom.className = 'tab loading';
+
+  var favicon = document.createElement('span');
+  favicon.className = 'tab-favicon';
+  var letter = document.createElement('span');
+  letter.className = 'tab-favicon-letter';
+  var spinner = document.createElement('span');
+  spinner.className = 'tab-spinner';
+  favicon.appendChild(letter);
+  favicon.appendChild(spinner);
+
+  var titleEl = document.createElement('span');
+  titleEl.className = 'tab-title';
+  titleEl.textContent = 'New Tab';
+
+  var close = document.createElement('button');
+  close.className = 'tab-close';
+  close.title = 'Close tab';
+  close.setAttribute('aria-label', 'Close tab');
+  close.innerHTML = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg>';
+
+  dom.appendChild(favicon);
+  dom.appendChild(titleEl);
+  dom.appendChild(close);
+  $('tabs').appendChild(dom);
+
+  var tab = {
+    el: iframe,
+    frame: controller.createFrame(iframe),
+    dom: dom,
+    faviconEl: favicon,
+    letterEl: letter,
+    titleEl: titleEl,
+    url: '',
+    title: 'New Tab',
+    isHome: false,
+    loading: true
+  };
+
+  close.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+  close.addEventListener('click', function (e) { e.stopPropagation(); closeTab(tab); });
+  dom.addEventListener('click', function () { activateTab(tab); });
+  dom.addEventListener('mousedown', function (e) {
+    if (e.button === 1) { e.preventDefault(); closeTab(tab); }
+  });
+  iframe.addEventListener('load', function () { onFrameLoad(tab); });
+
+  tabs.push(tab);
+  activateTab(tab);
+  navigateTo(tab, url || PROXY_HOME);
+  return tab;
+}
+
+function onFrameLoad(tab) {
+  if (tab.isHome) return;
+
+  var url = '';
+  try {
+    var href = tab.el.contentWindow.location.href;
+    var path = new URL(href).pathname;
+    var prefix = tab.frame.prefix || '';
+    var idx = prefix ? path.indexOf(prefix) : -1;
+    if (idx !== -1) url = decodeURIComponent(path.slice(idx + prefix.length));
+  } catch (e) {}
+
+  if (url) tab.url = url;
+
+  var title = '';
+  try { title = tab.el.contentDocument.title || ''; } catch (e) {}
+  if (title) tab.title = title;
+  else if (url) tab.title = hostOf(url) || url;
+
+  tab.loading = false;
+  renderTab(tab);
+  hideError();
+
+  if (tab === activeTab) {
+    setOmnibox(tab.url);
+    updateOmniboxIcon(tab.url);
+    document.title = tab.title || 'New Tab';
+    updateStar();
+  }
+}
+
+function closeTab(tab) {
+  var i = tabs.indexOf(tab);
+  if (i === -1) return;
+
+  try { tab.el.src = 'about:blank'; } catch (e) {}
+  try { if (tab.frame && typeof tab.frame.destroy === 'function') tab.frame.destroy(); } catch (e) {}
+  try { if (tab.frame && typeof tab.frame.close === 'function') tab.frame.close(); } catch (e) {}
+  try { tab.frame = null; } catch (e) {}
+
+  tabs.splice(i, 1);
+  if (tab.el && tab.el.parentNode) tab.el.parentNode.removeChild(tab.el);
+  if (tab.dom && tab.dom.parentNode) tab.dom.parentNode.removeChild(tab.dom);
+
+  if (tabs.length === 0) {
+    activeTab = null;
+    createTab(PROXY_HOME);
+  } else if (activeTab === tab) {
+    activateTab(tabs[Math.max(0, i - 1)]);
+  }
+}
+
+function navigateTo(tab, value) {
+  if (!tab) return;
+  hideError();
+
+  var target = normalizeUrl(value);
+
+  if (target === PROXY_HOME) {
+    tab.isHome = true;
+    tab.url = '';
+    tab.title = 'New Tab';
+    tab.loading = false;
+    renderTab(tab);
+    renderView();
+    setTimeout(function () {
+      var inp = $('pz-home-search-input');
+      if (inp && tab === activeTab && !bareMode) inp.focus();
+    }, 0);
+    return;
+  }
+
+  tab.isHome = false;
+  tab.url = target;
+  tab.title = hostOf(target) || target;
+  tab.loading = true;
+  renderTab(tab);
+  renderView();
+
+  try {
+    tab.frame.go(target);
+  } catch (e) {
+    tab.loading = false;
+    renderTab(tab);
+    showError('This site can’t be reached', (e && e.message ? e.message : String(e)));
+  }
+}
+
+function navigate(value) {
+  if (!activeTab) {
+    if (controller) createTab(value);
+    else { pendingUrl = value; initProxy(); }
+    return;
+  }
+  navigateTo(activeTab, value);
+}
+
+function newTab() {
+  if (bareMode) return;
+  if (controller) createTab(PROXY_HOME);
+  else initProxy();
+}
+
+function reloadActive() {
+  if (!activeTab) return;
+  if (activeTab.isHome) { renderView(); return; }
+  hideError();
+  activeTab.loading = true;
+  renderTab(activeTab);
+  try { activeTab.frame.reload(); }
+  catch (e) { activeTab.loading = false; renderTab(activeTab); }
+}
+
+/* ---------------- UI wiring ---------------- */
+
+$('pz-back').addEventListener('click', function () {
+  if (activeTab && !activeTab.isHome) { try { activeTab.frame.back(); } catch (e) {} }
+});
+$('pz-forward').addEventListener('click', function () {
+  if (activeTab && !activeTab.isHome) { try { activeTab.frame.forward(); } catch (e) {} }
+});
+$('pz-reload').addEventListener('click', reloadActive);
+$('pz-new-tab').addEventListener('click', newTab);
+
+var omnibox = $('pz-url');
+omnibox.addEventListener('focus', function () { omnibox.select(); });
+omnibox.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') {
+    var v = omnibox.value.trim();
+    if (!v) return;
+    omnibox.blur();
+    navigate(v);
+  } else if (e.key === 'Escape') {
+    omnibox.blur();
+    setOmnibox(activeTab && !activeTab.isHome ? activeTab.url : '');
+  }
+});
+
+var starBtn = $('star-btn');
+starBtn.addEventListener('click', function () {
+  if (!activeTab || activeTab.isHome || !activeTab.url) {
+    toast('This page can’t be bookmarked');
+    return;
+  }
+  toggleBookmark(activeTab.url, activeTab.title || activeTab.url);
+});
+
+$('pz-home-search').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var inp = $('pz-home-search-input');
+  var q = inp ? inp.value.trim() : '';
+  if (!q) return;
+  if (inp) inp.value = '';
+  navigate(q);
+});
+
+$('error-retry').addEventListener('click', function () {
+  if (!controller) { hideError(); showBootStatus('Starting…'); initProxy(); }
+  else reloadActive();
+});
+
+function toggleMenu(show) {
+  var pop = $('menu-popup');
+  if (!pop) return;
+  var next = typeof show === 'boolean' ? show : pop.hidden;
+  if (next) {
+    var r = $('menu-btn').getBoundingClientRect();
+    pop.style.top = (r.bottom + 6) + 'px';
+    pop.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+  }
+  pop.hidden = !next;
+}
+
+$('menu-btn').addEventListener('click', function (e) {
+  e.stopPropagation();
+  toggleMenu();
+});
+
+document.addEventListener('click', function (e) {
+  var pop = $('menu-popup');
+  if (!pop || pop.hidden) return;
+  if (pop.contains(e.target) || $('menu-btn').contains(e.target)) return;
+  pop.hidden = true;
+});
+
+$('menu-popup').addEventListener('click', function (e) {
+  var item = e.target.closest('.menu-item');
+  if (!item) return;
+  var action = item.getAttribute('data-action');
+  toggleMenu(false);
+
+  if (action === 'newtab') newTab();
+  else if (action === 'bookmark') {
+    if (!activeTab || activeTab.isHome || !activeTab.url) {
+      toast('This page can’t be bookmarked');
+    } else {
+      toggleBookmark(activeTab.url, activeTab.title || activeTab.url);
+    }
+  }
+  else if (action === 'background') {
+    openBgPanel(true);
+  }
+  else if (action === 'fullscreen') {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(function () {});
+  }
+  else if (action === 'clear') {
+    try {
+      localStorage.removeItem('pzW1sp');
+      localStorage.removeItem('pzBookmarks');
+    } catch (err) {}
+    renderBookmarks();
+    toast('Browsing data cleared');
+  }
+});
+
+/* background panel */
+
+$('bg-file').addEventListener('change', async function () {
+  var file = this.files && this.files[0];
+  this.value = '';
+  if (!file) return;
+  if (!/^image\//.test(file.type || '')) { toast('That file isn’t an image'); return; }
+
+  var raw;
+  try { raw = await fileToDataUrl(file); }
+  catch (e) { toast('Could not read that image'); return; }
+
+  var shrunk = await shrinkImage(raw, 1920, 0.85);
+  if (!saveBg('url(' + JSON.stringify(shrunk) + ')')) {
+    toast('That image is too large to save');
+    return;
+  }
+  applyBackground();
+  openBgPanel(false);
+  toast('Background updated');
+});
+
+$('bg-apply').addEventListener('click', function () {
+  var v = ($('bg-url').value || '').trim();
+  if (!v) { toast('Paste an image URL first'); return; }
+  if (!saveBg('url(' + JSON.stringify(v) + ')')) {
+    toast('Could not save that background');
+    return;
+  }
+  applyBackground();
+  openBgPanel(false);
+  toast('Background updated');
+});
+
+$('bg-remove').addEventListener('click', function () {
+  try { localStorage.removeItem('pzBg'); } catch (e) {}
+  applyBackground();
+  openBgPanel(false);
+  toast('Background removed');
+});
+
+Array.prototype.forEach.call(document.querySelectorAll('.bg-swatch'), function (sw) {
+  sw.addEventListener('click', function () {
+    var css = sw.getAttribute('data-bg') || '';
+    if (!css) return;
+    saveBg(css);
+    applyBackground();
+    openBgPanel(false);
+    toast('Background updated');
+  });
+});
+
+$('bg-overlay').addEventListener('click', function (e) {
+  if (e.target === this) openBgPanel(false);
+});
+
+/* keyboard */
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') {
+    var ov = $('bg-overlay');
+    if (ov && !ov.hidden) { openBgPanel(false); return; }
+  }
+
+  var mod = e.ctrlKey || e.metaKey;
+  var k = (e.key || '').toLowerCase();
+
+  if (mod && k === 't') { e.preventDefault(); newTab(); }
+  else if (mod && k === 'w') { e.preventDefault(); if (activeTab) closeTab(activeTab); }
+  else if (mod && k === 'l') { e.preventDefault(); omnibox.focus(); omnibox.select(); }
+  else if (mod && k === 'r') { e.preventDefault(); reloadActive(); }
+  else if (mod && k === 'd') {
+    e.preventDefault();
+    if (!activeTab || activeTab.isHome || !activeTab.url) toast('This page can’t be bookmarked');
+    else toggleBookmark(activeTab.url, activeTab.title || activeTab.url);
+  }
+  else if (e.key === 'F5') { e.preventDefault(); reloadActive(); }
+  else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); $('pz-back').click(); }
+  else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); $('pz-forward').click(); }
+});
+
+/* boot */
+
+function boot() {
+  handleHashTarget();
+  renderBookmarks();
+  applyBackground();
+  renderView();
+  initProxy();
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+})();
+</script>
+</body>
+</html>
